@@ -90,6 +90,7 @@ fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
 legend { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .6px; margin-bottom: 6px; padding: 0; }
 .range { display: flex; align-items: center; gap: 6px; }
 .range input { width: 100%; min-width: 0; }
+.range__label { color: var(--muted); font-size: 14px; white-space: nowrap; }
 .filters input[type=search] { width: 100%; }
 .check { display: flex; align-items: center; gap: 8px; margin-top: 7px; cursor: pointer; }
 .check input { width: 17px; height: 17px; accent-color: var(--accent); }
