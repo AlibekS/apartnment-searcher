@@ -121,10 +121,32 @@ def ad_to_record(ad: dict) -> dict | None:
 class OlxSource(BaseSource):
     name = "olx"
 
+    _regions: list | None = None
+
+    def _resolve_regions(self, url: str) -> str | None:
+        """Подставляет адрес региона OLX вместо `{region:Часть названия}` (например `{region:кмол}`).
+        Список регионов берётся из API OLX, поэтому не нужно угадывать адрес вручную."""
+        m = re.search(r"\{region:([^}]+)\}", url)
+        if not m:
+            return url
+        if self._regions is None:
+            data = self.http.get_json(BASE + "/api/v1/regions/", referer=BASE + "/") or {}
+            self._regions = data.get("data") or []
+            log.info("olx: регионы: %s", ", ".join(f"{r.get('name')}={r.get('normalized_name')}" for r in self._regions))
+        hint = m.group(1).lower()
+        for r in self._regions:
+            if hint in str(r.get("name", "")).lower() and r.get("normalized_name"):
+                return url.replace(m.group(0), r["normalized_name"])
+        log.warning("olx: регион «%s» не найден — ссылка пропущена: %s", m.group(1), url)
+        return None
+
     def fetch_list(self) -> list[dict]:
         records: dict[str, dict] = {}
         max_pages = int(self.settings.get("max_pages", 5))
-        for base_url in self.search_urls():
+        for raw_url in self.search_urls():
+            base_url = self._resolve_regions(raw_url)
+            if not base_url:
+                continue
             for page in range(1, max_pages + 1):
                 sep = "&" if "?" in base_url else "?"
                 url = base_url if page == 1 else f"{base_url}{sep}page={page}"
@@ -197,7 +219,7 @@ class OlxSource(BaseSource):
         return bool(rec.get("_needs_details")) and not rec.get("_details_loaded")
 
     def fetch_details(self, rec: dict) -> dict:
-        html = self.http.get(rec["url"], referer=BASE + "/", retries=1)
+        html = self.http.get(rec["url"], referer=BASE + "/", retries=1, rotate_on_403=False)
         if not html:
             raise RuntimeError(f"HTTP {self.http.last_status}")
         state = _prerendered_state(html) or {}

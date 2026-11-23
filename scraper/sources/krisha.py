@@ -68,6 +68,8 @@ class KrishaSource(BaseSource):
     def fetch_list(self) -> list[dict]:
         records: dict[str, dict] = {}
         max_pages = int(self.settings.get("max_pages", 5))
+        # как обычный посетитель: сначала главная (cookies), потом поиск
+        self.http.get(BASE + "/", retries=1)
         for base_url in self.search_urls():
             for page in range(1, max_pages + 1):
                 sep = "&" if "?" in base_url else "?"
@@ -127,11 +129,11 @@ class KrishaSource(BaseSource):
         return not rec.get("_details_loaded")
 
     def fetch_details(self, rec: dict) -> dict:
-        html = self.http.get(rec["url"], referer=BASE + "/prodazha/kvartiry/", retries=1)
+        html = self.http.get(rec["url"], referer=BASE + "/prodazha/kvartiry/", retries=1, rotate_on_403=False)
         if not html and self.http.last_status == 403:
             # запасной вариант — мобильная версия страницы
             m_url = rec["url"].replace("://krisha.kz", "://m.krisha.kz")
-            html = self.http.get(m_url, referer="https://m.krisha.kz/", retries=1)
+            html = self.http.get(m_url, referer="https://m.krisha.kz/", retries=1, rotate_on_403=False)
         if not html:
             raise RuntimeError(f"HTTP {self.http.last_status}")
         self.parse_detail_page(html, rec)

@@ -15,7 +15,7 @@ import time
 from datetime import date, timedelta
 from pathlib import Path
 
-from .http_client import HAVE_CFFI, HttpClient
+from .http_client import HttpClient
 from .pipeline import Rules, build_listings, classify_location, now_iso
 from .sources import SOURCES
 
@@ -69,7 +69,7 @@ def merge_record(old: dict | None, new: dict, today: str) -> dict:
 def scrape(source_names: list[str], raw: dict, settings: dict, rules: Rules, status: dict) -> None:
     today = date.today().isoformat()
     http = HttpClient(delay=tuple(settings.get("delay_seconds", [2, 5])))
-    log.info("HTTP-клиент: %s", "curl_cffi (имитация Chrome)" if HAVE_CFFI else "requests")
+    log.info("HTTP-клиент: %s", http.mode)
     detail_budget = int(settings.get("max_detail_requests_per_run", 100))
     max_price = int(settings.get("max_price", 30000000))
     drop_after = int(settings.get("drop_after_days", 4))
