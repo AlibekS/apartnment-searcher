@@ -1,0 +1,23 @@
+{
+  "_comment": "Настройки парсера. Парсер собирает объявления ШИРЕ дефолтного фильтра (чтобы на сайте можно было расширять фильтры), а сайт фильтрует уже в браузере. Ссылки поиска можно менять: откройте нужный поиск на сайте, скопируйте адрес и вставьте сюда.",
+  "max_price": 30000000,
+  "delay_seconds": [2, 5],
+  "drop_after_days": 4,
+  "max_detail_requests_per_run": 120,
+  "krisha": {
+    "enabled": true,
+    "max_pages": 8,
+    "search_urls": [
+      "https://krisha.kz/prodazha/kvartiry/astana/?das[price][to]={max_price}&das[house.year][from]=2000",
+      "https://krisha.kz/prodazha/kvartiry/akmolinskaja-oblast/?das[price][to]={max_price}"
+    ]
+  },
+  "olx": {
+    "enabled": true,
+    "max_pages": 6,
+    "search_urls": [
+      "https://www.olx.kz/nedvizhimost/prodazha-kvartiry/astana/?search[filter_float_price:to]={max_price}",
+      "https://www.olx.kz/nedvizhimost/prodazha-kvartiry/akmolinskaya-oblast/?search[filter_float_price:to]={max_price}"
+    ]
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "_comment": "Пресет фильтров, который применяется при открытии сайта и по кнопке «Сбросить к моим настройкам». budget — порог для бейджа «вошла в бюджет» при снижении цены.",
+  "rooms": [
+    2
+  ],
+  "price_min": null,
+  "price_max": 20000000,
+  "floor_min": 1,
+  "floor_max": 3,
+  "not_first_floor": false,
+  "year_min": 2000,
+  "hide_unknown_year": false,
+  "region": "all",
+  "secondary_only": true,
+  "hide_utility_warnings": true,
+  "only_price_drop": false,
+  "search": "",
+  "sort": "astana_new",
+  "budget": 20000000
+}

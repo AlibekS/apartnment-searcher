@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Квартиры Астаны</title>
+  <meta name="description" content="Агрегатор объявлений о продаже квартир в Астане и пригороде">
+  <meta name="theme-color" content="#0B132B">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%231C2541'/%3E%3Cpath d='M8 24V14l8-6 8 6v10h-5v-6h-6v6z' fill='%235BC0BE'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar__row container">
+      <div class="brand">
+        <h1>Квартиры · Астана</h1>
+        <div class="brand__meta" id="metaLine">Загрузка…</div>
+      </div>
+      <nav class="topbar__actions" aria-label="Режимы и заметки">
+        <button class="btn btn--ghost" id="viewFav" aria-pressed="false">★ Избранное <span class="count" id="favCount">0</span></button>
+        <button class="btn btn--ghost" id="viewHidden" aria-pressed="false">👁 Скрытые <span class="count" id="hiddenCount">0</span></button>
+        <button class="btn btn--ghost" id="exportBtn" title="Скачать избранное, статусы и заметки в файл">⇩ Экспорт</button>
+        <button class="btn btn--ghost" id="importBtn" title="Загрузить заметки из файла">⇧ Импорт</button>
+        <input type="file" id="importFile" accept="application/json,.json" hidden>
+      </nav>
+    </div>
+
+    <div class="toolbar container">
+      <div class="chips" role="group" aria-label="Количество комнат" id="roomChips">
+        <button class="chip" data-room="1">1</button>
+        <button class="chip" data-room="2">2</button>
+        <button class="chip" data-room="3">3</button>
+        <button class="chip" data-room="4">4+</button>
+      </div>
+      <div class="seg" role="group" aria-label="Локация" id="regionSeg">
+        <button data-region="all">Все</button>
+        <button data-region="astana">Только Астана</button>
+        <button data-region="suburb">Пригород</button>
+      </div>
+      <label class="sort">
+        <span class="visually-hidden">Сортировка</span>
+        <select id="sortSel">
+          <option value="astana_new">Сначала Астана + новые</option>
+          <option value="price_asc">Сначала дешевле</option>
+          <option value="sqm_asc">Дешевле за м²</option>
+          <option value="below_market">Ниже рынка</option>
+          <option value="new">Сначала новые</option>
+        </select>
+      </label>
+      <button class="btn btn--primary" id="toggleFilters" aria-expanded="false" aria-controls="filters">Фильтры <span id="filtersBadge" class="count"></span></button>
+    </div>
+
+    <section class="filters container" id="filters" hidden>
+      <div class="fgrid">
+        <fieldset>
+          <legend>Цена, ₸</legend>
+          <div class="range">
+            <input type="text" inputmode="numeric" id="priceMin" placeholder="от">
+            <span>—</span>
+            <input type="text" inputmode="numeric" id="priceMax" placeholder="до">
+          </div>
+        </fieldset>
+        <fieldset>
+          <legend>Этаж</legend>
+          <div class="range">
+            <input type="number" min="1" max="50" id="floorMin" placeholder="от">
+            <span>—</span>
+            <input type="number" min="1" max="50" id="floorMax" placeholder="до">
+          </div>
+          <label class="check"><input type="checkbox" id="notFirst"> Не первый этаж</label>
+        </fieldset>
+        <fieldset>
+          <legend>Год постройки</legend>
+          <div class="range">
+            <input type="number" min="1950" max="2030" id="yearMin" placeholder="от">
+          </div>
+          <label class="check"><input type="checkbox" id="yearKnown"> Скрыть без года</label>
+        </fieldset>
+        <fieldset>
+          <legend>Поиск</legend>
+          <input type="search" id="searchInp" placeholder="ЖК, улица, район, слово в описании">
+        </fieldset>
+        <fieldset class="checks">
+          <legend>Показывать</legend>
+          <label class="check"><input type="checkbox" id="secondaryOnly"> Только вторичка</label>
+          <label class="check"><input type="checkbox" id="hideWarn"> Скрыть с предупреждениями ЖКХ</label>
+          <label class="check"><input type="checkbox" id="onlyDrop"> Только со снижением цены</label>
+        </fieldset>
+      </div>
+      <div class="filters__foot">
+        <button class="btn btn--ghost" id="resetBtn">↺ Сбросить к моим настройкам</button>
+        <button class="btn btn--primary" id="closeFilters">Показать</button>
+      </div>
+    </section>
+  </header>
+
+  <main class="container">
+    <div id="notice"></div>
+    <div class="resultline" id="resultLine"></div>
+    <div class="grid" id="grid" aria-live="polite"></div>
+    <div class="empty" id="empty" hidden>
+      <p>Ничего не найдено по текущим фильтрам.</p>
+      <button class="btn btn--ghost" id="emptyReset">↺ Сбросить к моим настройкам</button>
+    </div>
+  </main>
+
+  <dialog class="modal" id="modal" aria-labelledby="modalTitle">
+    <div class="modal__inner" id="modalBody"></div>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" hidden></div>
+
+  <script src="assets/app.js" defer></script>
+</body>
+</html>

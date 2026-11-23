@@ -1,0 +1,25 @@
+{
+ "updated_at": "2026-11-23T07:19:45+00:00",
+ "last_attempt_at": "2026-11-23T07:19:45+00:00",
+ "demo": true,
+ "count": 45,
+ "stats": {
+  "raw": 53,
+  "excluded": {
+   "blacklist": 2,
+   "not_in_whitelist": 1
+  },
+  "utility_warnings": 1,
+  "cards": 45,
+  "duplicates_merged": 5
+ },
+ "sources": {
+  "demo": {
+   "ok": true,
+   "found": 53,
+   "kept": 53,
+   "error": null,
+   "at": "2026-11-23T07:19:45+00:00"
+  }
+ }
+}
