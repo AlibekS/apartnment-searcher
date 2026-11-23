@@ -11,6 +11,7 @@ import argparse
 import json
 import logging
 import sys
+import time
 from datetime import date, timedelta
 from pathlib import Path
 
@@ -97,13 +98,28 @@ def scrape(source_names: list[str], raw: dict, settings: dict, rules: Rules, sta
             # подробности — сначала для новых объявлений
             todo = [k for k in kept if src.needs_details(raw[k])]
             todo.sort(key=lambda k: raw[k].get("first_seen") or "", reverse=True)
-            for key in todo[:detail_budget]:
+            # «Предохранитель»: если сайт подряд отказывает в страницах объявлений (403 и т.п.),
+            # прекращаем догрузку в этом запуске — данных со страниц поиска достаточно для сайта.
+            fails_in_row, attempts = 0, 0
+            deadline = time.monotonic() + float(settings.get("max_detail_minutes", 15)) * 60
+            for key in todo[:max(detail_budget, 0)]:
+                if fails_in_row >= 3:
+                    st["details_blocked"] = True
+                    log.warning("%s: страницы объявлений недоступны (%d отказа подряд) — пропускаем догрузку подробностей",
+                                name, fails_in_row)
+                    break
+                if time.monotonic() > deadline:
+                    log.info("%s: лимит времени на подробности исчерпан", name)
+                    break
+                attempts += 1
                 try:
                     raw[key] = src.fetch_details(raw[key])
                     st["details"] += 1
+                    fails_in_row = 0
                 except Exception as exc:  # noqa: BLE001
+                    fails_in_row += 1
                     log.warning("%s: детали %s не загружены: %s", name, key, exc)
-            detail_budget -= st["details"]
+            detail_budget -= attempts
             st["ok"] = len(items) > 0
             if not items:
                 st["error"] = "0 объявлений — возможно, сайт поменял вёрстку или заблокировал запросы"

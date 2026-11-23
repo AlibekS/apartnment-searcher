@@ -31,6 +31,11 @@ USER_AGENTS = [
 ]
 
 
+# Профили curl_cffi: TLS-отпечаток и заголовки браузера согласованы между собой.
+# Профиль выбирается один на запуск (смена «браузера» посреди сессии сама по себе подозрительна).
+CFFI_PROFILES = ["chrome", "chrome124", "chrome120", "chrome116"]
+
+
 class HttpClient:
     def __init__(self, delay: tuple[float, float] = (2, 5), retries: int = 3, timeout: int = 30):
         self.delay = delay
@@ -38,10 +43,15 @@ class HttpClient:
         self.timeout = timeout
         self._last = 0.0
         self.requests_made = 0
+        self.last_status: int | None = None
         if HAVE_CFFI:
-            self.session = _cffi_requests.Session(impersonate="chrome")
+            self.profile = random.choice(CFFI_PROFILES)
+            self.session = _cffi_requests.Session(impersonate=self.profile)
+            self.user_agent = None  # User-Agent задаёт сам curl_cffi под выбранный профиль
         else:
+            self.profile = "requests"
             self.session = requests.Session()
+            self.user_agent = random.choice(USER_AGENTS)
 
     def _sleep(self) -> None:
         wait = random.uniform(*self.delay)
@@ -49,28 +59,32 @@ class HttpClient:
         if elapsed < wait:
             time.sleep(wait - elapsed)
 
-    def get(self, url: str, referer: str | None = None) -> str | None:
-        for attempt in range(1, self.retries + 1):
+    def get(self, url: str, referer: str | None = None, retries: int | None = None) -> str | None:
+        """Возвращает HTML или None. Код последнего ответа — в self.last_status."""
+        retries = self.retries if retries is None else retries
+        self.last_status = None
+        for attempt in range(1, retries + 1):
             self._sleep()
-            headers = {
-                "User-Agent": random.choice(USER_AGENTS),
-                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-                "Accept-Language": "ru-RU,ru;q=0.9,kk;q=0.8,en;q=0.6",
-            }
+            headers = {"Accept-Language": "ru-RU,ru;q=0.9,kk;q=0.8,en;q=0.6"}
+            if self.user_agent:
+                headers["User-Agent"] = self.user_agent
+                headers["Accept"] = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
             if referer:
                 headers["Referer"] = referer
             try:
                 resp = self.session.get(url, headers=headers, timeout=self.timeout)
                 self._last = time.monotonic()
                 self.requests_made += 1
+                self.last_status = resp.status_code
                 if resp.status_code == 200:
                     return resp.text
-                if resp.status_code == 404:
-                    log.info("404 %s", url)
+                if resp.status_code in (403, 404, 410):
+                    # 403 — защита сайта: повторы сразу же почти никогда не помогают, только злят её
+                    log.warning("HTTP %s на %s", resp.status_code, url)
                     return None
                 log.warning("HTTP %s на %s (попытка %d)", resp.status_code, url, attempt)
-                if resp.status_code in (403, 429):
-                    time.sleep(15 * attempt + random.uniform(0, 10))
+                if resp.status_code == 429:
+                    time.sleep(20 * attempt + random.uniform(0, 10))
             except Exception as exc:  # noqa: BLE001
                 self._last = time.monotonic()
                 log.warning("Ошибка запроса %s: %s (попытка %d)", url, exc, attempt)

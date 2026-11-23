@@ -127,9 +127,13 @@ class KrishaSource(BaseSource):
         return not rec.get("_details_loaded")
 
     def fetch_details(self, rec: dict) -> dict:
-        html = self.http.get(rec["url"], referer=BASE + "/prodazha/kvartiry/")
+        html = self.http.get(rec["url"], referer=BASE + "/prodazha/kvartiry/", retries=1)
+        if not html and self.http.last_status == 403:
+            # запасной вариант — мобильная версия страницы
+            m_url = rec["url"].replace("://krisha.kz", "://m.krisha.kz")
+            html = self.http.get(m_url, referer="https://m.krisha.kz/", retries=1)
         if not html:
-            return rec
+            raise RuntimeError(f"HTTP {self.http.last_status}")
         self.parse_detail_page(html, rec)
         rec["_details_loaded"] = True
         return rec

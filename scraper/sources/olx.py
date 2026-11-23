@@ -197,9 +197,9 @@ class OlxSource(BaseSource):
         return bool(rec.get("_needs_details")) and not rec.get("_details_loaded")
 
     def fetch_details(self, rec: dict) -> dict:
-        html = self.http.get(rec["url"], referer=BASE + "/")
+        html = self.http.get(rec["url"], referer=BASE + "/", retries=1)
         if not html:
-            return rec
+            raise RuntimeError(f"HTTP {self.http.last_status}")
         state = _prerendered_state(html) or {}
         ad = ((state.get("ad") or {}).get("ad")) if isinstance(state, dict) else None
         if isinstance(ad, dict):
