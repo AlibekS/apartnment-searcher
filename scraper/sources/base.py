@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import re
 from abc import ABC, abstractmethod
 from typing import Any
@@ -83,9 +84,41 @@ class BaseSource(ABC):
         self.settings = settings
         self.global_settings = global_settings
 
-    def search_urls(self) -> list[str]:
+    def search_urls(self) -> list[tuple[str, int]]:
+        """Ссылки поиска с лимитом страниц. Элемент конфига — строка или {"url": ..., "max_pages": N}."""
         max_price = self.global_settings.get("max_price", 30000000)
-        return [u.replace("{max_price}", str(max_price)) for u in self.settings.get("search_urls", [])]
+        default_pages = int(self.settings.get("max_pages", 5))
+        out = []
+        for item in self.settings.get("search_urls", []):
+            url, pages = (item.get("url", ""), int(item.get("max_pages", default_pages))) if isinstance(item, dict) \
+                else (item, default_pages)
+            if url:
+                out.append((url.replace("{max_price}", str(max_price)), pages))
+        return out
+
+    def paginate(self, base_url: str, max_pages: int, referer: str, parse) -> dict[str, dict]:
+        """Листает страницы поиска. Останавливается, если страница пустая, без новых объявлений
+        или заметно короче первой (значит, это последняя страница — дальше сайты часто подмешивают
+        «похожие» объявления из других разделов)."""
+        records: dict[str, dict] = {}
+        first = 0
+        for page in range(1, max_pages + 1):
+            sep = "&" if "?" in base_url else "?"
+            url = base_url if page == 1 else f"{base_url}{sep}page={page}"
+            html = self.http.get(url, referer=referer)
+            if not html:
+                break
+            items = parse(html)
+            logging.getLogger(__name__).info("%s: %s — %d объявлений", self.name, url, len(items))
+            new = 0
+            for rec in items:
+                if rec["source_id"] not in records:
+                    new += 1
+                records[rec["source_id"]] = rec
+            first = first or len(items)
+            if not items or new == 0 or len(items) < first * 0.3:
+                break
+        return records
 
     @abstractmethod
     def fetch_list(self) -> list[dict]:

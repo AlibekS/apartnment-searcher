@@ -123,23 +123,8 @@ class OlxSource(BaseSource):
 
     def fetch_list(self) -> list[dict]:
         records: dict[str, dict] = {}
-        max_pages = int(self.settings.get("max_pages", 5))
-        for base_url in self.search_urls():
-            for page in range(1, max_pages + 1):
-                sep = "&" if "?" in base_url else "?"
-                url = base_url if page == 1 else f"{base_url}{sep}page={page}"
-                html = self.http.get(url, referer=BASE + "/")
-                if not html:
-                    break
-                items = self.parse_list_page(html)
-                log.info("olx: %s — %d объявлений", url, len(items))
-                new = 0
-                for rec in items:
-                    if rec["source_id"] not in records:
-                        new += 1
-                    records[rec["source_id"]] = rec
-                if not items or new == 0:
-                    break
+        for base_url, pages in self.search_urls():
+            records.update(self.paginate(base_url, pages, BASE + "/", self.parse_list_page))
         return list(records.values())
 
     @staticmethod

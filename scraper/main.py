@@ -72,6 +72,7 @@ def scrape(source_names: list[str], raw: dict, settings: dict, rules: Rules, sta
     log.info("HTTP-клиент: %s", http.mode)
     detail_budget = int(settings.get("max_detail_requests_per_run", 100))
     max_price = int(settings.get("max_price", 30000000))
+    min_price = int(settings.get("min_price", 3000000))
     drop_after = int(settings.get("drop_after_days", 4))
 
     for name in source_names:
@@ -86,8 +87,8 @@ def scrape(source_names: list[str], raw: dict, settings: dict, rules: Rules, sta
             st["found"] = len(items)
             kept = []
             for rec in items:
-                if rec.get("price") and rec["price"] > max_price:
-                    continue
+                if not rec.get("price") or rec["price"] > max_price or rec["price"] < min_price:
+                    continue  # вне бюджета сбора; слишком низкая цена — аренда или опечатка
                 region, _, _ = classify_location(rec, rules)
                 if not region:
                     continue  # чужой город / чёрный список — даже не храним
@@ -174,6 +175,9 @@ def main(argv: list[str] | None = None) -> int:
         save_json(DATA / "meta.json", prev_meta)
         return 0
 
+    # чистим кэш от объявлений вне ценового диапазона (например, аренда, попавшая из поиска)
+    lo, hi = int(settings.get("min_price", 3000000)), int(settings.get("max_price", 30000000))
+    raw = {k: v for k, v in raw.items() if demo or lo <= (v.get("price") or 0) <= hi}
     listings, stats = build_listings(raw, history, rules)
     # история цен только для живых объявлений
     history = {k: v for k, v in history.items() if k in raw}

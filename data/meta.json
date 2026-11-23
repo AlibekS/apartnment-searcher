@@ -1,13 +1,13 @@
 {
- "updated_at": "2026-11-23T08:19:47+00:00",
- "last_attempt_at": "2026-11-23T08:19:47+00:00",
+ "updated_at": "2026-11-23T08:25:56+00:00",
+ "last_attempt_at": "2026-11-23T08:25:56+00:00",
  "demo": false,
- "count": 2107,
+ "count": 1249,
  "stats": {
-  "raw": 2126,
+  "raw": 1268,
   "excluded": {},
-  "utility_warnings": 4,
-  "cards": 2107,
+  "utility_warnings": 1,
+  "cards": 1249,
   "duplicates_merged": 19
  },
  "sources": {
