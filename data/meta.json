@@ -1,32 +1,34 @@
 {
- "updated_at": "2026-11-23T08:25:56+00:00",
- "last_attempt_at": "2026-11-23T08:25:56+00:00",
+ "updated_at": "2026-11-23T20:18:33+00:00",
+ "last_attempt_at": "2026-11-23T20:18:33+00:00",
  "demo": false,
- "count": 1249,
+ "count": 1555,
  "stats": {
-  "raw": 1268,
-  "excluded": {},
+  "raw": 1584,
+  "excluded": {
+   "other_region": 2
+  },
   "utility_warnings": 1,
-  "cards": 1249,
-  "duplicates_merged": 19
+  "cards": 1555,
+  "duplicates_merged": 27
  },
  "sources": {
   "krisha": {
    "ok": true,
-   "found": 796,
-   "kept": 422,
+   "found": 802,
+   "kept": 447,
    "details": 0,
    "error": null,
-   "at": "2026-11-23T08:03:35+00:00",
+   "at": "2026-11-23T20:12:14+00:00",
    "details_blocked": true
   },
   "olx": {
    "ok": true,
-   "found": 1706,
-   "kept": 1650,
-   "details": 117,
+   "found": 922,
+   "kept": 778,
+   "details": 5,
    "error": null,
-   "at": "2026-11-23T08:06:46+00:00"
+   "at": "2026-11-23T20:15:25+00:00"
   }
  }
 }
