@@ -116,6 +116,7 @@ class KrishaSource(BaseSource):
                     src = img.get("src") or img.get("data-src")
                     if src and src.startswith("http"):
                         rec["photos"] = [_upsize_photo(src)]
+                        rec["photo_thumbs"] = [src]  # гарантированно рабочее превью — запасной вариант
                 if card.select_one(".a-card__video, .a-card__label--video, [class*='video']"):
                     rec["video"] = rec["url"]
                 rec["seller"] = "owner" if card.select_one(".label--owner, .owners__label") else None

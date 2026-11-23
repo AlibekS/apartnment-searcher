@@ -81,6 +81,7 @@ class PipelineTests(unittest.TestCase):
         self.assertIsNone(classify_location({"city": "Талапкер"}, RULES)[0])
         self.assertIsNone(classify_location({"city": "Кокшетау"}, RULES)[0])
         self.assertEqual(classify_location({"address": "Акмолинская обл., с. Уркер"}, RULES)[0], "suburb")
+        self.assertIsNone(classify_location({"city": "Ильинка", "address": "Костанайская область, Ильинка"}, RULES)[0])
 
     def test_stopwords_boundaries(self):
         self.assertEqual(find_terms("Сдача дома в 2025, передача ключей", RULES.utility), [])

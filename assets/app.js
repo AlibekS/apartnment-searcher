@@ -514,6 +514,17 @@
     $('.slider__count', cardEl).textContent = `${i + 1}/${photos.length}`;
   }
 
+  /** Подставить запасной адрес фото (превью площадки), если полноразмерное не загрузилось. */
+  function tryFallback(img, c) {
+    const alt = c && c.photo_fallback && c.photo_fallback[img.getAttribute('src')];
+    if (!alt || img.dataset.fallbackFor === img.getAttribute('src')) return false;
+    const safe = safeUrl(alt);
+    if (!safe) return false;
+    img.dataset.fallbackFor = safe;
+    img.src = safe;
+    return true;
+  }
+
   function handleAction(act, c, root) {
     const crm = crmOf(c) || {};
     if (act === 'fav') {
@@ -560,6 +571,7 @@
       const img = e.target;
       if (img.tagName !== 'IMG' || !img.closest('.slider')) return;
       const cardEl = img.closest('.card');
+      if (tryFallback(img, byId(cardEl.dataset.id))) return;
       const total = (byId(cardEl.dataset.id)?.photos || []).length;
       const fails = Number(img.dataset.fails || 0) + 1;
       img.dataset.fails = String(fails);
@@ -607,6 +619,9 @@
       if (e.key === 'ArrowRight') modalPhoto(1);
       if (e.key === 'ArrowLeft') modalPhoto(-1);
     });
+    modal.addEventListener('error', (e) => {
+      if (e.target.tagName === 'IMG') tryFallback(e.target, byId(modal.dataset.id));
+    }, true);
     modal.addEventListener('close', () => { $('#modalBody').innerHTML = ''; render(true); });
 
     // фильтры

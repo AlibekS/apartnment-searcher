@@ -46,6 +46,7 @@ class Rules:
         city = locations.get("city", {})
         self.city_name = city.get("name", "Астана")
         self.city_aliases = compile_terms(city.get("aliases", [self.city_name]), whole_word=True)
+        self.suburb_region = compile_terms(locations.get("suburb_region", {}).get("aliases", []))
         self.suburbs = []
         for s in locations.get("suburbs", []):
             self.suburbs.append({
@@ -86,8 +87,12 @@ def classify_location(rec: dict, rules: Rules) -> tuple[str | None, str | None, 
     city = rec.get("city") or ""
     if find_terms(city, rules.city_aliases):
         return "astana", rules.city_name, "city"
+    foreign_region = bool(re.search(r"обл\.|област", norm(loc))) and rules.suburb_region \
+        and not find_terms(loc, rules.suburb_region)
     for s in rules.suburbs:
         if find_terms(loc, s["aliases"]):
+            if foreign_region:
+                return None, None, f"other_region:{s['name']}"
             if s["require_any"]:
                 text = loc + " " + (rec.get("description") or "")
                 if not find_terms(text, s["require_any"]):
@@ -98,11 +103,35 @@ def classify_location(rec: dict, rules: Rules) -> tuple[str | None, str | None, 
     return None, None, "not_in_whitelist"
 
 
+DISTRICT_CANON = [
+    ("алмат", "Алматы р-н"), ("есил", "Есиль р-н"), ("сарыар", "Сарыарка р-н"),
+    ("байкон", "Байконур р-н"), ("нура", "Нура р-н"), ("нұра", "Нура р-н"), ("сарайш", "Сарайшык р-н"),
+]
+
+
+def canon_district(name: str | None) -> str | None:
+    """Krisha пишет «Алматы р-н», OLX — «Алматинский район»: приводим к одному виду."""
+    if not name:
+        return None
+    n = norm(name)
+    for prefix, canon in DISTRICT_CANON:
+        if n.startswith(prefix):
+            return canon
+    return str(name).strip()
+
+
 def extract_district(rec: dict) -> str | None:
     if rec.get("district"):
-        return str(rec["district"]).strip()
+        return canon_district(rec["district"])
     m = DISTRICT_RE.search(rec.get("address") or "")
-    return f"{m.group(1)} р-н" if m else None
+    return canon_district(f"{m.group(1)} р-н") if m else None
+
+
+def house_address(rec: dict) -> str:
+    """Улица + номер дома (если есть цифры), без района — для отсева «разных квартир в одном ЖК»."""
+    addr = norm(rec.get("address"))
+    addr = re.sub(r"^[^,]*(?:р-н|район)\s*,?\s*", "", addr)
+    return addr if re.search(r"\d", addr) else ""
 
 
 # ---------------------------------------------------------------- характеристики
@@ -152,8 +181,34 @@ def market_type(rec: dict, rules: Rules) -> tuple[str, list[str]]:
 
 # ---------------------------------------------------------------- дубли
 
+COMPLEX_IN_TEXT = re.compile(r"(?<!\w)(?:жк|жилой комплекс|жил\. комплекс)\s*[«\"“']?\s*([\w\-]+(?:\s[\w\-]+)?)", re.I)
+
+
+def guess_complex(rec: dict) -> str:
+    """ЖК из поля, а если его нет (OLX) — из заголовка/описания («ЖК Onyx …»)."""
+    if rec.get("complex"):
+        return norm(re.sub(r"^(?:жк|жилой комплекс)\s+", "", norm(rec["complex"])))
+    m = COMPLEX_IN_TEXT.search(f"{rec.get('title') or ''} . {rec.get('description') or ''}")
+    if not m:
+        return ""
+    words = norm(m.group(1)).split()
+    # второе слово берём, только если это не служебное слово
+    if len(words) > 1 and words[1] in {"на", "по", "в", "от", "с", "рядом", "возле", "район", "р-н"}:
+        words = words[:1]
+    return " ".join(words)
+
+
+def _tokens(text: str) -> set[str]:
+    return {w for w in re.findall(r"\w{3,}", norm(text))}
+
+
+def text_similarity(a: str, b: str) -> float:
+    ta, tb = _tokens(a), _tokens(b)
+    return len(ta & tb) / len(ta | tb) if ta and tb else 0.0
+
+
 def _loc_key(rec: dict) -> tuple[str, str, str]:
-    return norm(rec.get("complex")), norm(rec.get("district_norm")), norm(rec.get("locality"))
+    return rec.get("complex_key") or "", norm(rec.get("district_norm")), norm(rec.get("locality"))
 
 
 def is_duplicate(a: dict, b: dict) -> bool:
@@ -165,38 +220,53 @@ def is_duplicate(a: dict, b: dict) -> bool:
     cb, db, lb = _loc_key(b)
     if la != lb:
         return False
-    if ca and cb:
-        return ca == cb or ca in cb or cb in ca
-    # у одного из объявлений нет ЖК — склеиваем осторожнее: район и цена в пределах 15%
     if da and db and da != db:
         return False
+    # оба адреса с номером дома и они разные — это разные квартиры (например, разные блоки ЖК)
+    ha, hb = house_address(a), house_address(b)
+    if ha and hb and ha != hb:
+        return False
+    for f in ("floors_total", "year"):
+        if a.get(f) and b.get(f) and a[f] != b[f]:
+            return False
     pa, pb = a.get("price") or 0, b.get("price") or 0
-    return bool(pa and pb and abs(pa - pb) / max(pa, pb) <= 0.15)
+    price_diff = abs(pa - pb) / max(pa, pb) if pa and pb else 1
+    if ca and cb:
+        if not (ca == cb or ca in cb or cb in ca):
+            return False
+        # в одном ЖК бывает много одинаковых планировок — цены должны быть близки
+        return price_diff <= 0.12
+    # ЖК неизвестен хотя бы у одного — склеиваем только почти точные совпадения
+    if abs(a["area"] - b["area"]) > 0.5 or price_diff > 0.07:
+        return False
+    if a.get("source") == b.get("source"):
+        # повтор на той же площадке (другой риелтор/перевыкладка) — тексты обычно почти одинаковые
+        return text_similarity(f"{a.get('title')} {a.get('description')}", f"{b.get('title')} {b.get('description')}") >= 0.5
+    # разные площадки: этажность дома должна быть известна у обоих
+    return bool(a.get("floors_total") and b.get("floors_total"))
 
 
 def cluster(records: list[dict]) -> list[list[dict]]:
-    parent = list(range(len(records)))
-
-    def find(i: int) -> int:
-        while parent[i] != i:
-            parent[i] = parent[parent[i]]
-            i = parent[i]
-        return i
-
-    buckets: dict[tuple, list[int]] = {}
-    for i, r in enumerate(records):
+    """Жадная кластеризация: объявление попадает в группу, только если оно — дубль КАЖДОГО её члена
+    (без цепочек A≈B≈C, которые склеивали разные квартиры)."""
+    buckets: dict[tuple, list[dict]] = {}
+    groups: list[list[dict]] = []
+    for r in records:
         if r.get("rooms") is None or r.get("floor") is None or not r.get("area"):
+            groups.append([r])
             continue
-        buckets.setdefault((r["rooms"], r["floor"], r.get("locality")), []).append(i)
-    for idxs in buckets.values():
-        for x in range(len(idxs)):
-            for y in range(x + 1, len(idxs)):
-                if is_duplicate(records[idxs[x]], records[idxs[y]]):
-                    parent[find(idxs[x])] = find(idxs[y])
-    groups: dict[int, list[dict]] = {}
-    for i, r in enumerate(records):
-        groups.setdefault(find(i), []).append(r)
-    return list(groups.values())
+        buckets.setdefault((r["rooms"], r["floor"], r.get("locality")), []).append(r)
+    for items in buckets.values():
+        local: list[list[dict]] = []
+        for r in sorted(items, key=lambda x: x["price"]):
+            for g in local:
+                if all(is_duplicate(r, m) for m in g):
+                    g.append(r)
+                    break
+            else:
+                local.append([r])
+        groups.extend(local)
+    return groups
 
 
 # ---------------------------------------------------------------- история цен
@@ -248,6 +318,7 @@ def build_listings(raw: dict[str, dict], history: dict, rules: Rules, today: str
         r["key"] = key
         r["region"], r["locality"] = region, locality
         r["district_norm"] = extract_district(rec) if region == "astana" else locality
+        r["complex_key"] = guess_complex(rec)
         r["wall"] = normalize_wall(rec.get("wall"))
         r["heating"] = infer_heating(rec)
         r["market"], r["market_triggers"] = market_type(rec, rules)
@@ -294,6 +365,9 @@ def build_listings(raw: dict[str, dict], history: dict, rules: Rules, today: str
             "lon": next((r["lon"] for r in group if r.get("lon")), None),
             "description": best.get("description") or "",
             "photos": photos,
+            # запасные адреса фото: если «полноразмерное» не откроется, сайт покажет превью
+            "photo_fallback": {p: t for r in group for p, t in zip(r.get("photos") or [], r.get("photo_thumbs") or [])
+                               if p != t and p in photos},
             "video": next((r["video"] for r in group if r.get("video")), None),
             "market": "new" if any(r["market"] == "new" for r in group) else "secondary",
             "market_triggers": market_triggers,

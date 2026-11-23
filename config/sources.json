@@ -1,5 +1,5 @@
 {
-  "_comment": "Настройки парсера. Парсер собирает объявления ШИРЕ дефолтного фильтра (чтобы на сайте можно было расширять фильтры), а сайт фильтрует уже в браузере. Ссылки поиска можно менять: откройте нужный поиск на сайте, скопируйте адрес и вставьте сюда. Для OLX вместо адреса региона можно писать {region:часть названия} — адрес найдётся автоматически.",
+  "_comment": "Настройки парсера. Парсер собирает объявления ШИРЕ дефолтного фильтра (чтобы на сайте можно было расширять фильтры), а сайт фильтрует уже в браузере. Ссылки поиска можно менять: откройте нужный поиск на сайте, скопируйте адрес и вставьте сюда. Пригороды на OLX ищутся поиском по названию посёлка (q-…): лишнее отсеется по config/locations.json.",
   "max_price": 30000000,
   "delay_seconds": [
     2,
@@ -21,7 +21,12 @@
     "max_pages": 25,
     "search_urls": [
       "https://www.olx.kz/nedvizhimost/prodazha-kvartiry/astana/?search[filter_float_price:to]={max_price}",
-      "https://www.olx.kz/nedvizhimost/prodazha-kvartiry/{region:кмол}/?search[filter_float_price:to]={max_price}"
+      "https://www.olx.kz/nedvizhimost/prodazha-kvartiry/q-Косшы/?search[filter_float_price:to]={max_price}",
+      "https://www.olx.kz/nedvizhimost/prodazha-kvartiry/q-Ильинка/?search[filter_float_price:to]={max_price}",
+      "https://www.olx.kz/nedvizhimost/prodazha-kvartiry/q-Уркер/?search[filter_float_price:to]={max_price}",
+      "https://www.olx.kz/nedvizhimost/prodazha-kvartiry/q-Жибек-Жолы/?search[filter_float_price:to]={max_price}",
+      "https://www.olx.kz/nedvizhimost/prodazha-kvartiry/q-Коянды/?search[filter_float_price:to]={max_price}",
+      "https://www.olx.kz/nedvizhimost/prodazha-kvartiry/q-Пригородный/?search[filter_float_price:to]={max_price}"
     ]
   }
 }
