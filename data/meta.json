@@ -1,15 +1,13 @@
 {
- "updated_at": "2026-11-27T13:56:21+00:00",
- "last_attempt_at": "2026-11-27T13:56:21+00:00",
+ "updated_at": "2026-11-27T22:46:09+00:00",
+ "last_attempt_at": "2026-11-27T22:46:09+00:00",
  "demo": false,
- "count": 1656,
+ "count": 1663,
  "stats": {
-  "raw": 1692,
-  "excluded": {
-   "other_region": 1
-  },
+  "raw": 1698,
+  "excluded": {},
   "utility_warnings": 3,
-  "cards": 1656,
+  "cards": 1663,
   "duplicates_merged": 35
  },
  "sources": {
@@ -19,15 +17,15 @@
    "kept": 0,
    "details": 0,
    "error": "0 объявлений — возможно, сайт поменял вёрстку или заблокировал запросы",
-   "at": "2026-11-27T13:52:39+00:00"
+   "at": "2026-11-27T22:42:12+00:00"
   },
   "olx": {
    "ok": true,
-   "found": 958,
-   "kept": 803,
-   "details": 1,
+   "found": 963,
+   "kept": 809,
+   "details": 0,
    "error": null,
-   "at": "2026-11-27T13:53:27+00:00"
+   "at": "2026-11-27T22:43:09+00:00"
   }
  }
 }
